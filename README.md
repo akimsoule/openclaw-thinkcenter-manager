@@ -35,10 +35,19 @@ Ne jamais committer `.env`.
 `bootstrap` applique aussi automatiquement `gateway.controlUi.allowedOrigins` si
 `CONTROL_UI_SERVER_IP` ou `CONTROL_UI_ALLOWED_ORIGINS_JSON` est defini.
 
+Si `CONTROL_UI_DISABLE_DEVICE_IDENTITY=true`, `bootstrap` applique aussi:
+`gateway.controlUi.dangerouslyDisableDeviceAuth=true`.
+
 Commande manuelle si besoin:
 
 ```bash
 ./scripts/manage-image.sh allow-origin 192.168.0.63
+```
+
+Desactivation manuelle de l'identite appareil (DANGEROUS):
+
+```bash
+./scripts/manage-image.sh disable-device-identity
 ```
 
 ## 4) Pairing recovery

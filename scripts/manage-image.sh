@@ -15,6 +15,8 @@ Commands:
   pull             Pull OPENCLAW_IMAGE
   bootstrap        Write minimal required OpenClaw config (gateway.mode/bind)
   allow-origin     Configure Control UI allowedOrigins (arg IP or env)
+  disable-device-identity Disable Control UI device identity checks (dangerous)
+  enable-device-identity  Re-enable Control UI device identity checks
   up               Pull + start + bootstrap + restart gateway
   first-start      Full first-run flow: prepare + up + health + dashboard
   down             Stop stack
@@ -62,6 +64,7 @@ load_env() {
   : "${OPENCLAW_CONTAINER_UID:=1000}"
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
+  : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
 
   export OPENCLAW_CONFIG_DIR
   export OPENCLAW_WORKSPACE_DIR
@@ -70,6 +73,7 @@ load_env() {
   export OPENCLAW_CONTAINER_UID
   export CONTROL_UI_SERVER_IP
   export CONTROL_UI_ALLOWED_ORIGINS_JSON
+  export CONTROL_UI_DISABLE_DEVICE_IDENTITY
 }
 
 compose() {
@@ -133,9 +137,16 @@ cmd_pull() {
 cmd_bootstrap() {
   require_cmd docker
   load_env
+  local disable_identity
+
   compose run --rm openclaw-cli config set gateway.mode local
   compose run --rm openclaw-cli config set gateway.bind "$OPENCLAW_GATEWAY_BIND"
   cmd_allow_origin --auto || true
+
+  disable_identity="$(printf '%s' "${CONTROL_UI_DISABLE_DEVICE_IDENTITY}" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$disable_identity" == "true" ]]; then
+    cmd_disable_device_identity --auto
+  fi
 }
 
 normalize_origins_json() {
@@ -222,6 +233,25 @@ cmd_allow_origin() {
   echo "Applied gateway.controlUi.allowedOrigins: $origins_json"
 }
 
+cmd_disable_device_identity() {
+  require_cmd docker
+  compose run --rm openclaw-cli \
+    config set gateway.controlUi.dangerouslyDisableDeviceAuth true
+
+  if [[ "${1:-}" != "--auto" ]]; then
+    compose restart openclaw-gateway
+  fi
+  echo "Applied gateway.controlUi.dangerouslyDisableDeviceAuth=true"
+}
+
+cmd_enable_device_identity() {
+  require_cmd docker
+  compose run --rm openclaw-cli \
+    config set gateway.controlUi.dangerouslyDisableDeviceAuth false
+  compose restart openclaw-gateway
+  echo "Applied gateway.controlUi.dangerouslyDisableDeviceAuth=false"
+}
+
 cmd_up() {
   cmd_prepare
   cmd_pull
@@ -288,6 +318,8 @@ main() {
     pull) cmd_pull ;;
     bootstrap) cmd_bootstrap ;;
     allow-origin) cmd_allow_origin "${2:-}" ;;
+    disable-device-identity) cmd_disable_device_identity ;;
+    enable-device-identity) cmd_enable_device_identity ;;
     up) cmd_up ;;
     first-start) cmd_first_start ;;
     down) cmd_down ;;
