@@ -2,6 +2,7 @@ services:
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE}
     container_name: ${COMPOSE_PROJECT_NAME}-gateway
+    user: root
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -10,8 +11,8 @@ services:
       MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     volumes:
-      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
-      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
     ports:
       - "${OPENCLAW_GATEWAY_PORT}:18789"
       - "${OPENCLAW_BRIDGE_PORT}:18790"
@@ -37,8 +38,12 @@ services:
       HOME: /home/node
       TERM: xterm-256color
     volumes:
-      - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
-      - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
     entrypoint: ["node", "dist/index.js"]
     stdin_open: true
     tty: true
+
+volumes:
+  openclaw-config:
+  openclaw-workspace:

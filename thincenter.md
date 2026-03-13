@@ -1,3 +1,27 @@
+# Contexte de la Codebase
+
+**Source :** .
+**Date :** 2026-03-13T08:52:09Z
+
+---
+
+## 1. Arborescence des fichiers
+
+```text
+# liste des fichiers calculée à partir des chemins sélectionnés
+.github/openclaw-docs-1.json
+.github/workflows/validate.yml
+docker-compose.yml
+scripts/manage-image.sh
+```
+
+---
+
+## 2. Contenu des fichiers
+
+### 📄 `scripts/manage-image.sh`
+
+```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -507,3 +531,88 @@ main() {
 }
 
 main "$@"
+```
+
+---
+
+### 📄 `.github/workflows/validate.yml`
+
+```yaml
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax check
+        run: bash -n scripts/manage-image.sh
+```
+
+---
+
+### 📄 `docker-compose.yml`
+
+```yaml
+services:
+  openclaw-gateway:
+    image: ${OPENCLAW_IMAGE}
+    container_name: ${COMPOSE_PROJECT_NAME}-gateway
+    user: root
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    volumes:
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT}:18789"
+      - "${OPENCLAW_BRIDGE_PORT}:18790"
+    restart: unless-stopped
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway",
+        "--bind",
+        "${OPENCLAW_GATEWAY_BIND}",
+        "--port",
+        "18789",
+      ]
+
+  openclaw-cli:
+    image: ${OPENCLAW_IMAGE}
+    container_name: ${COMPOSE_PROJECT_NAME}-cli
+    network_mode: "service:openclaw-gateway"
+    depends_on:
+      - openclaw-gateway
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+    volumes:
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
+    entrypoint: ["node", "dist/index.js"]
+    stdin_open: true
+    tty: true
+
+volumes:
+  openclaw-config:
+  openclaw-workspace:
+```
+
+---
+
+
+---
+## Résumé
+- **Fichiers inclus :** 3
+- **Taille totale estimée :** 15 Ko
