@@ -166,11 +166,18 @@ cmd_apply_model() {
   require_cmd docker
   load_env
 
+  # 1. Register Ollama as a provider (auto-seeds the provider object if missing)
+  compose run --rm openclaw-cli \
+    config set models.providers.ollama.apiKey "ollama-local"
+  # 2. Set the correct base URL (host.docker.internal for Docker)
+  compose run --rm openclaw-cli \
+    config set models.providers.ollama.baseUrl "${OLLAMA_BASE_URL}"
+  # 3. Set the primary model
   compose run --rm openclaw-cli \
     config set agents.defaults.model.primary "ollama/${OLLAMA_PRIMARY_MODEL}"
   compose run --rm openclaw-cli \
     config set agents.defaults.model.fallbacks '[]' --strict-json || true
-  echo "Applied primary model: ollama/${OLLAMA_PRIMARY_MODEL}"
+  echo "Applied primary model: ollama/${OLLAMA_PRIMARY_MODEL} (base: ${OLLAMA_BASE_URL})"
 }
 
 csv_to_json_array() {
