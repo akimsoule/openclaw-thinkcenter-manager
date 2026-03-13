@@ -180,6 +180,20 @@ cmd_apply_model() {
   primary_provider="${primary_model%%/*}"
   primary_id="${primary_model#*/}"
 
+  compose run --rm openclaw-cli config set models.mode merge
+
+  if [[ "$primary_provider" == "moonshot" ]]; then
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.baseUrl "https://api.moonshot.ai/v1"
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.apiKey '"${MOONSHOT_API_KEY}"' --strict-json
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.api "openai-completions"
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.models '[{"id":"kimi-k2.5","name":"Kimi K2.5"}]' --strict-json
+    primary_model="moonshot/kimi-k2.5"
+  fi
+
   if [[ "$primary_provider" == "nvidia" ]]; then
     compose run --rm openclaw-cli \
       config set models.providers.nvidia.baseUrl "https://integrate.api.nvidia.com/v1"
