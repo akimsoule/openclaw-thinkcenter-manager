@@ -138,6 +138,42 @@ cmd_bootstrap() {
   cmd_allow_origin --auto || true
 }
 
+normalize_origins_json() {
+  local raw="${1:-}"
+  python3 - "$raw" <<'PY'
+import json
+import re
+import sys
+
+raw = (sys.argv[1] if len(sys.argv) > 1 else "").strip()
+if not raw:
+    print("")
+    raise SystemExit(1)
+
+# Preferred path: already-valid JSON array of strings
+try:
+    parsed = json.loads(raw)
+    if isinstance(parsed, list) and all(isinstance(x, str) and x for x in parsed):
+        print(json.dumps(parsed))
+        raise SystemExit(0)
+except Exception:
+    pass
+
+# Compatibility path: [http://a:18789,http://b:18789]
+compact = re.sub(r"\s+", "", raw)
+if compact.startswith("[") and compact.endswith("]"):
+    body = compact[1:-1]
+    if body:
+        parts = [p for p in body.split(",") if p]
+        if parts and all(re.match(r"^https?://[^\]\"']+$", p) for p in parts):
+            print(json.dumps(parts))
+            raise SystemExit(0)
+
+print("")
+raise SystemExit(1)
+PY
+}
+
 resolve_allowed_origins_json() {
   load_env
 
@@ -148,7 +184,7 @@ resolve_allowed_origins_json() {
   fi
 
   if [[ -n "${CONTROL_UI_ALLOWED_ORIGINS_JSON:-}" ]]; then
-    echo "$CONTROL_UI_ALLOWED_ORIGINS_JSON"
+    normalize_origins_json "$CONTROL_UI_ALLOWED_ORIGINS_JSON"
     return 0
   fi
 
