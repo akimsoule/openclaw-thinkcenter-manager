@@ -197,22 +197,17 @@ cmd_apply_model() {
       fail "MOONSHOT_API_KEY is empty. Set it in .env (or MOONSHOT_AI_KEY alias)."
     fi
 
-    local moonshot_provider_json
-    moonshot_provider_json="$(python3 - <<'PY'
-import json
-import os
-
-print(json.dumps({
-    "baseUrl": "https://api.moonshot.ai/v1",
-    "apiKey": os.environ.get("MOONSHOT_API_KEY", ""),
-    "api": "openai-completions",
-    "models": [{"id": "kimi-k2.5", "name": "Kimi K2.5"}],
-}))
-PY
-)"
+    # Ensure the Moonshot provider block includes a "models" array (required by schema validation).
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.baseUrl "https://api.moonshot.ai/v1"
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.api "openai-completions"
+    compose run --rm openclaw-cli \
+      config set models.providers.moonshot.apiKey "${MOONSHOT_API_KEY}"
 
     compose run --rm openclaw-cli \
-      config set models.providers.moonshot "$moonshot_provider_json" --strict-json
+      config set models.providers.moonshot.models '[{"id":"kimi-k2.5","name":"Kimi K2.5","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":'"${PRIMARY_MODEL_CONTEXT_WINDOW}"',"maxTokens":'"${PRIMARY_MODEL_MAX_TOKENS}"'}]' --strict-json
+
     primary_model="moonshot/kimi-k2.5"
   fi
 
@@ -231,6 +226,16 @@ PY
     config set agents.defaults.model.fallbacks '[]' --strict-json || true
 
   echo "Applied primary model: ${primary_model}"
+
+  # Validate the resulting OpenClaw config before proceeding.
+  # If validation fails, dump the Moonshot provider section for debugging.
+  if ! compose run --rm openclaw-cli config validate --json; then
+    echo "" >&2
+    echo "ERROR: OpenClaw config validation failed." >&2
+    echo "Dumping models.providers.moonshot for inspection:" >&2
+    compose run --rm openclaw-cli config get models.providers.moonshot --json || true
+    fail "Config validation failed. Fix the generated config and retry."
+  fi
 }
 
 csv_to_json_array() {
