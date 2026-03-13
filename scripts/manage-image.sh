@@ -60,6 +60,14 @@ load_env() {
   source "$ENV_FILE"
   set +a
 
+  # Backward-compatible aliases from user shell profiles
+  if [[ -z "${MOONSHOT_API_KEY:-}" && -n "${MOONSHOT_AI_KEY:-}" ]]; then
+    MOONSHOT_API_KEY="$MOONSHOT_AI_KEY"
+  fi
+  if [[ -z "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_TOKEN:-}" ]]; then
+    TELEGRAM_BOT_TOKEN="$TELEGRAM_TOKEN"
+  fi
+
   : "${OPENCLAW_CONFIG_DIR:=${HOME}/.openclaw-thinkcenter}"
   : "${OPENCLAW_WORKSPACE_DIR:=${OPENCLAW_CONFIG_DIR}/workspace}"
   : "${OPENCLAW_GATEWAY_BIND:=lan}"
@@ -83,6 +91,8 @@ load_env() {
   export CONTROL_UI_SERVER_IP
   export CONTROL_UI_ALLOWED_ORIGINS_JSON
   export CONTROL_UI_DISABLE_DEVICE_IDENTITY
+  export MOONSHOT_API_KEY
+  export TELEGRAM_BOT_TOKEN
   export PRIMARY_MODEL
   export PRIMARY_MODEL_CONTEXT_WINDOW
   export PRIMARY_MODEL_MAX_TOKENS
