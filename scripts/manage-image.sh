@@ -14,6 +14,7 @@ Commands:
   prepare          Create state dirs and fix ownership for container UID
   pull             Pull OPENCLAW_IMAGE
   bootstrap        Write minimal required OpenClaw config (gateway.mode/bind)
+  allow-origin     Configure Control UI allowedOrigins (arg IP or env)
   up               Pull + start + bootstrap + restart gateway
   first-start      Full first-run flow: prepare + up + health + dashboard
   down             Stop stack
@@ -59,12 +60,16 @@ load_env() {
   : "${OPENCLAW_GATEWAY_BIND:=lan}"
   : "${OPENCLAW_IMAGE:=akimsoule/openclaw-thinkcenter:latest}"
   : "${OPENCLAW_CONTAINER_UID:=1000}"
+  : "${CONTROL_UI_SERVER_IP:=}"
+  : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
 
   export OPENCLAW_CONFIG_DIR
   export OPENCLAW_WORKSPACE_DIR
   export OPENCLAW_GATEWAY_BIND
   export OPENCLAW_IMAGE
   export OPENCLAW_CONTAINER_UID
+  export CONTROL_UI_SERVER_IP
+  export CONTROL_UI_ALLOWED_ORIGINS_JSON
 }
 
 compose() {
@@ -130,6 +135,55 @@ cmd_bootstrap() {
   load_env
   compose run --rm openclaw-cli config set gateway.mode local
   compose run --rm openclaw-cli config set gateway.bind "$OPENCLAW_GATEWAY_BIND"
+  cmd_allow_origin --auto || true
+}
+
+resolve_allowed_origins_json() {
+  load_env
+
+  local ip_arg="${1:-}"
+  if [[ -n "$ip_arg" ]]; then
+    echo "[\"http://${ip_arg}:${OPENCLAW_GATEWAY_PORT:-18789}\",\"http://127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}\"]"
+    return 0
+  fi
+
+  if [[ -n "${CONTROL_UI_ALLOWED_ORIGINS_JSON:-}" ]]; then
+    echo "$CONTROL_UI_ALLOWED_ORIGINS_JSON"
+    return 0
+  fi
+
+  if [[ -n "${CONTROL_UI_SERVER_IP:-}" ]]; then
+    echo "[\"http://${CONTROL_UI_SERVER_IP}:${OPENCLAW_GATEWAY_PORT:-18789}\",\"http://127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}\"]"
+    return 0
+  fi
+
+  return 1
+}
+
+cmd_allow_origin() {
+  require_cmd docker
+
+  local mode="${1:-}"
+  local ip_arg=""
+  if [[ "$mode" == "--auto" ]]; then
+    ip_arg=""
+  else
+    ip_arg="$mode"
+  fi
+
+  local origins_json
+  if ! origins_json="$(resolve_allowed_origins_json "$ip_arg")"; then
+    if [[ "$mode" == "--auto" ]]; then
+      warn "Skipping allowedOrigins auto-config (set CONTROL_UI_SERVER_IP or CONTROL_UI_ALLOWED_ORIGINS_JSON in .env)."
+      return 0
+    fi
+    fail "No origin provided. Use: allow-origin <server-ip> or set CONTROL_UI_SERVER_IP / CONTROL_UI_ALLOWED_ORIGINS_JSON in .env"
+  fi
+
+  compose run --rm openclaw-cli \
+    config set gateway.controlUi.allowedOrigins "$origins_json" --strict-json
+
+  echo "Applied gateway.controlUi.allowedOrigins: $origins_json"
 }
 
 cmd_up() {
@@ -197,6 +251,7 @@ main() {
     prepare) cmd_prepare ;;
     pull) cmd_pull ;;
     bootstrap) cmd_bootstrap ;;
+    allow-origin) cmd_allow_origin "${2:-}" ;;
     up) cmd_up ;;
     first-start) cmd_first_start ;;
     down) cmd_down ;;

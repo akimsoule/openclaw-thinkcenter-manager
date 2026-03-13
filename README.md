@@ -22,6 +22,7 @@ Ne jamais committer `.env`.
 - `OPENCLAW_IMAGE=akimsoule/openclaw-thinkcenter:latest` (ou tag date)
 - `TELEGRAM_BOT_TOKEN` (optionnel)
 - `NVIDIA_API_KEY` (optionnel)
+- `CONTROL_UI_SERVER_IP=192.168.0.63` (IP du ThinkCentre pour l'acces distant)
 
 ## 3) Deploy
 
@@ -30,6 +31,15 @@ Ne jamais committer `.env`.
 ```
 
 `first-start` fait: `prepare` + `pull` + `up` + `bootstrap` + `restart` + `health` + `dashboard`.
+
+`bootstrap` applique aussi automatiquement `gateway.controlUi.allowedOrigins` si
+`CONTROL_UI_SERVER_IP` ou `CONTROL_UI_ALLOWED_ORIGINS_JSON` est defini.
+
+Commande manuelle si besoin:
+
+```bash
+./scripts/manage-image.sh allow-origin 192.168.0.63
+```
 
 ## 4) Pairing recovery
 
