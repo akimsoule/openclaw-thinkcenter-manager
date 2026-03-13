@@ -193,14 +193,26 @@ cmd_apply_model() {
   compose run --rm openclaw-cli config set models.mode merge
 
   if [[ "$primary_provider" == "moonshot" ]]; then
+    if [[ -z "${MOONSHOT_API_KEY:-}" ]]; then
+      fail "MOONSHOT_API_KEY is empty. Set it in .env (or MOONSHOT_AI_KEY alias)."
+    fi
+
+    local moonshot_provider_json
+    moonshot_provider_json="$(python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "apiKey": os.environ.get("MOONSHOT_API_KEY", ""),
+    "api": "openai-completions",
+    "models": [{"id": "kimi-k2.5", "name": "Kimi K2.5"}],
+}))
+PY
+)"
+
     compose run --rm openclaw-cli \
-      config set models.providers.moonshot.baseUrl "https://api.moonshot.ai/v1"
-    compose run --rm openclaw-cli \
-      config set models.providers.moonshot.apiKey '"${MOONSHOT_API_KEY}"' --strict-json
-    compose run --rm openclaw-cli \
-      config set models.providers.moonshot.api "openai-completions"
-    compose run --rm openclaw-cli \
-      config set models.providers.moonshot.models '[{"id":"kimi-k2.5","name":"Kimi K2.5"}]' --strict-json
+      config set models.providers.moonshot "$moonshot_provider_json" --strict-json
     primary_model="moonshot/kimi-k2.5"
   fi
 
