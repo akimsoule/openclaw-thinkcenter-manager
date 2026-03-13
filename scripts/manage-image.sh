@@ -68,7 +68,7 @@ load_env() {
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
   : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
-  : "${PRIMARY_MODEL:=nvidia/moonshotai/kimi-k2.5}"
+  : "${PRIMARY_MODEL:=moonshot/kimi-k2.5}"
   : "${PRIMARY_MODEL_CONTEXT_WINDOW:=131072}"
   : "${PRIMARY_MODEL_MAX_TOKENS:=16384}"
   : "${TELEGRAM_DM_POLICY:=open}"
@@ -171,7 +171,10 @@ cmd_apply_model() {
   load_env
 
   local primary_model
-  primary_model="${PRIMARY_MODEL:-nvidia/moonshotai/kimi-k2.5}"
+  primary_model="${PRIMARY_MODEL:-moonshot/kimi-k2.5}"
+  if [[ "$primary_model" == moonshotai/* ]]; then
+    primary_model="moonshot/${primary_model#moonshotai/}"
+  fi
   local primary_provider
   local primary_id
   primary_provider="${primary_model%%/*}"

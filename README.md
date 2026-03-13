@@ -22,6 +22,7 @@ Ne jamais committer `.env`.
 - `OPENCLAW_IMAGE=akimsoule/openclaw-thinkcenter:latest` (ou tag date)
 - `TELEGRAM_BOT_TOKEN` (optionnel)
 - `NVIDIA_API_KEY` (optionnel)
+- `MOONSHOT_API_KEY` (optionnel, requis si `PRIMARY_MODEL=moonshot/...`)
 - `CONTROL_UI_SERVER_IP=192.168.0.63` (IP du ThinkCentre pour l'acces distant)
 
 ## 3) Deploy
@@ -40,7 +41,8 @@ Si `CONTROL_UI_DISABLE_DEVICE_IDENTITY=true`, `bootstrap` applique aussi:
 
 `bootstrap` applique aussi automatiquement:
 
-- le modele principal `PRIMARY_MODEL` (par defaut: `nvidia/moonshotai/kimi-k2.5`)
+- le modele principal `PRIMARY_MODEL` (par defaut: `moonshot/kimi-k2.5`)
+- `moonshotai/kimi-k2.5` est accepte et normalise automatiquement vers `moonshot/kimi-k2.5`
 - pour les modeles NVIDIA hors catalogue integre, `bootstrap` enregistre explicitement le modele dans `models.providers.nvidia.models`
 - la policy Telegram (`TELEGRAM_DM_POLICY`, `TELEGRAM_GROUP_POLICY`, `TELEGRAM_GROUP_ALLOW_FROM`)
 
