@@ -166,18 +166,30 @@ cmd_apply_model() {
   require_cmd docker
   load_env
 
-  # 1. Register Ollama as a provider (auto-seeds the provider object if missing)
+  # Always register Ollama as a provider (used as fallback or primary)
   compose run --rm openclaw-cli \
     config set models.providers.ollama.apiKey "ollama-local"
-  # 2. Set the correct base URL (host.docker.internal for Docker)
   compose run --rm openclaw-cli \
     config set models.providers.ollama.baseUrl "${OLLAMA_BASE_URL}"
-  # 3. Set the primary model
+
+  local primary_model
+  primary_model="${PRIMARY_MODEL:-ollama/${OLLAMA_FALLBACK_MODEL:-${OLLAMA_PRIMARY_MODEL:-qwen3.5:4b-q4_K_M}}}"
+
+  # Set fallback to local Ollama when primary is not already ollama
+  local fallback_model
+  if [[ "$primary_model" != ollama/* ]]; then
+    fallback_model="ollama/${OLLAMA_FALLBACK_MODEL:-${OLLAMA_PRIMARY_MODEL:-qwen3.5:4b-q4_K_M}}"
+    compose run --rm openclaw-cli \
+      config set agents.defaults.model.fallbacks "[\"${fallback_model}\"]" --strict-json || true
+    echo "Applied primary model: ${primary_model} (fallback: ${fallback_model})"
+  else
+    compose run --rm openclaw-cli \
+      config set agents.defaults.model.fallbacks '[]' --strict-json || true
+    echo "Applied primary model: ${primary_model}"
+  fi
+
   compose run --rm openclaw-cli \
-    config set agents.defaults.model.primary "ollama/${OLLAMA_PRIMARY_MODEL}"
-  compose run --rm openclaw-cli \
-    config set agents.defaults.model.fallbacks '[]' --strict-json || true
-  echo "Applied primary model: ollama/${OLLAMA_PRIMARY_MODEL} (base: ${OLLAMA_BASE_URL})"
+    config set agents.defaults.model.primary "${primary_model}"
 }
 
 csv_to_json_array() {
