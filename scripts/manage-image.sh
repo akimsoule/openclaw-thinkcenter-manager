@@ -194,20 +194,28 @@ cmd_apply_telegram() {
     return 0
   fi
 
+  local effective_group_policy
+  effective_group_policy="$TELEGRAM_GROUP_POLICY"
+  if [[ "$TELEGRAM_GROUP_POLICY" == "allowlist" && -z "${TELEGRAM_GROUP_ALLOW_FROM:-}" ]]; then
+    warn "TELEGRAM_GROUP_POLICY=allowlist but TELEGRAM_GROUP_ALLOW_FROM is empty; switching group policy to open."
+    effective_group_policy="open"
+  fi
+
   compose run --rm openclaw-cli config set channels.telegram.enabled true
   compose run --rm openclaw-cli config set channels.telegram.botToken "$TELEGRAM_BOT_TOKEN"
-  compose run --rm openclaw-cli config set channels.telegram.dmPolicy "$TELEGRAM_DM_POLICY"
-  compose run --rm openclaw-cli config set channels.telegram.groupPolicy "$TELEGRAM_GROUP_POLICY"
 
   if [[ "$TELEGRAM_DM_POLICY" == "open" ]]; then
     compose run --rm openclaw-cli \
       config set channels.telegram.allowFrom '["*"]' --strict-json
   fi
 
-  if [[ "$TELEGRAM_GROUP_POLICY" == "open" ]]; then
+  compose run --rm openclaw-cli config set channels.telegram.dmPolicy "$TELEGRAM_DM_POLICY"
+  compose run --rm openclaw-cli config set channels.telegram.groupPolicy "$effective_group_policy"
+
+  if [[ "$effective_group_policy" == "open" ]]; then
     compose run --rm openclaw-cli \
       config set channels.telegram.groups '{"*":{"requireMention":false}}' --strict-json || true
-  elif [[ "$TELEGRAM_GROUP_POLICY" == "allowlist" ]]; then
+  elif [[ "$effective_group_policy" == "allowlist" ]]; then
     local group_allow_json
     group_allow_json="$(csv_to_json_array "$TELEGRAM_GROUP_ALLOW_FROM")"
     if [[ "$group_allow_json" != "[]" ]]; then
@@ -218,7 +226,7 @@ cmd_apply_telegram() {
     fi
   fi
 
-  echo "Applied Telegram policy: dm=${TELEGRAM_DM_POLICY}, group=${TELEGRAM_GROUP_POLICY}"
+  echo "Applied Telegram policy: dm=${TELEGRAM_DM_POLICY}, group=${effective_group_policy}"
 }
 
 normalize_origins_json() {
