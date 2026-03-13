@@ -68,7 +68,7 @@ load_env() {
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
   : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
-  : "${PRIMARY_MODEL:=nvidia/moonshotai/kimi-k2.5}"
+  : "${PRIMARY_MODEL:=nvidia/nvidia/llama-3.1-nemotron-70b-instruct}"
   : "${TELEGRAM_DM_POLICY:=open}"
   : "${TELEGRAM_GROUP_POLICY:=open}"
   : "${TELEGRAM_GROUP_ALLOW_FROM:=}"
@@ -167,7 +167,7 @@ cmd_apply_model() {
   load_env
 
   local primary_model
-  primary_model="${PRIMARY_MODEL:-nvidia/moonshotai/kimi-k2.5}"
+  primary_model="${PRIMARY_MODEL:-nvidia/nvidia/llama-3.1-nemotron-70b-instruct}"
 
   compose run --rm openclaw-cli \
     config set agents.defaults.model.primary "${primary_model}"
