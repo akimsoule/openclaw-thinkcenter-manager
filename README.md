@@ -26,11 +26,10 @@ Ne jamais committer `.env`.
 ## 3) Deploy
 
 ```bash
-./scripts/manage-image.sh pull
-./scripts/manage-image.sh up
-./scripts/manage-image.sh health
-./scripts/manage-image.sh dashboard
+./scripts/manage-image.sh first-start
 ```
+
+`first-start` fait: `prepare` + `pull` + `up` + `bootstrap` + `restart` + `health` + `dashboard`.
 
 ## 4) Pairing recovery
 
@@ -38,7 +37,16 @@ Ne jamais committer `.env`.
 ./scripts/manage-image.sh pairing-recover
 ```
 
-## 5) Mise a jour de version image
+## 5) Reset propre (si besoin)
+
+```bash
+./scripts/manage-image.sh reset-state
+./scripts/manage-image.sh first-start
+```
+
+`reset-state` sauvegarde l'ancien state dans `~/.openclaw-thinkcenter.bak.<timestamp>` puis repart proprement.
+
+## 6) Mise a jour de version image
 
 Dans `.env`, change:
 
@@ -51,4 +59,10 @@ Puis:
 ```bash
 ./scripts/manage-image.sh pull
 ./scripts/manage-image.sh restart
+```
+
+## 7) Diagnostic rapide
+
+```bash
+./scripts/manage-image.sh diagnose
 ```
