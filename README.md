@@ -40,7 +40,7 @@ Si `CONTROL_UI_DISABLE_DEVICE_IDENTITY=true`, `bootstrap` applique aussi:
 
 `bootstrap` applique aussi automatiquement:
 
-- le modele principal `ollama/<OLLAMA_PRIMARY_MODEL>`
+- le modele principal `PRIMARY_MODEL` (par defaut: `nvidia/moonshotai/kimi-k2.5`)
 - la policy Telegram (`TELEGRAM_DM_POLICY`, `TELEGRAM_GROUP_POLICY`, `TELEGRAM_GROUP_ALLOW_FROM`)
 
 Commande manuelle si besoin:

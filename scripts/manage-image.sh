@@ -14,7 +14,7 @@ Commands:
   prepare          Create state dirs and fix ownership for container UID
   pull             Pull OPENCLAW_IMAGE
   bootstrap        Write minimal required OpenClaw config (gateway.mode/bind)
-  apply-model      Configure Ollama as primary model
+  apply-model      Configure PRIMARY_MODEL as primary model
   apply-telegram   Apply Telegram dm/group policy from .env
   allow-origin     Configure Control UI allowedOrigins (arg IP or env)
   disable-device-identity Disable Control UI device identity checks (dangerous)
@@ -68,7 +68,7 @@ load_env() {
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
   : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
-  : "${OLLAMA_PRIMARY_MODEL:=qwen3.5:4b-q4_K_M}"
+  : "${PRIMARY_MODEL:=nvidia/moonshotai/kimi-k2.5}"
   : "${TELEGRAM_DM_POLICY:=open}"
   : "${TELEGRAM_GROUP_POLICY:=open}"
   : "${TELEGRAM_GROUP_ALLOW_FROM:=}"
@@ -81,7 +81,7 @@ load_env() {
   export CONTROL_UI_SERVER_IP
   export CONTROL_UI_ALLOWED_ORIGINS_JSON
   export CONTROL_UI_DISABLE_DEVICE_IDENTITY
-  export OLLAMA_PRIMARY_MODEL
+  export PRIMARY_MODEL
   export TELEGRAM_DM_POLICY
   export TELEGRAM_GROUP_POLICY
   export TELEGRAM_GROUP_ALLOW_FROM
@@ -166,30 +166,15 @@ cmd_apply_model() {
   require_cmd docker
   load_env
 
-  # Always register Ollama as a provider (used as fallback or primary)
-  compose run --rm openclaw-cli \
-    config set models.providers.ollama.apiKey "ollama-local"
-  compose run --rm openclaw-cli \
-    config set models.providers.ollama.baseUrl "${OLLAMA_BASE_URL}"
-
   local primary_model
-  primary_model="${PRIMARY_MODEL:-ollama/${OLLAMA_FALLBACK_MODEL:-${OLLAMA_PRIMARY_MODEL:-qwen3.5:4b-q4_K_M}}}"
-
-  # Set fallback to local Ollama when primary is not already ollama
-  local fallback_model
-  if [[ "$primary_model" != ollama/* ]]; then
-    fallback_model="ollama/${OLLAMA_FALLBACK_MODEL:-${OLLAMA_PRIMARY_MODEL:-qwen3.5:4b-q4_K_M}}"
-    compose run --rm openclaw-cli \
-      config set agents.defaults.model.fallbacks "[\"${fallback_model}\"]" --strict-json || true
-    echo "Applied primary model: ${primary_model} (fallback: ${fallback_model})"
-  else
-    compose run --rm openclaw-cli \
-      config set agents.defaults.model.fallbacks '[]' --strict-json || true
-    echo "Applied primary model: ${primary_model}"
-  fi
+  primary_model="${PRIMARY_MODEL:-nvidia/moonshotai/kimi-k2.5}"
 
   compose run --rm openclaw-cli \
     config set agents.defaults.model.primary "${primary_model}"
+  compose run --rm openclaw-cli \
+    config set agents.defaults.model.fallbacks '[]' --strict-json || true
+
+  echo "Applied primary model: ${primary_model}"
 }
 
 csv_to_json_array() {
