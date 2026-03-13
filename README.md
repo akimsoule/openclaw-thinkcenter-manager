@@ -38,6 +38,11 @@ Ne jamais committer `.env`.
 Si `CONTROL_UI_DISABLE_DEVICE_IDENTITY=true`, `bootstrap` applique aussi:
 `gateway.controlUi.dangerouslyDisableDeviceAuth=true`.
 
+`bootstrap` applique aussi automatiquement:
+
+- le modele principal `ollama/<OLLAMA_PRIMARY_MODEL>`
+- la policy Telegram (`TELEGRAM_DM_POLICY`, `TELEGRAM_GROUP_POLICY`, `TELEGRAM_GROUP_ALLOW_FROM`)
+
 Commande manuelle si besoin:
 
 ```bash
@@ -48,6 +53,12 @@ Desactivation manuelle de l'identite appareil (DANGEROUS):
 
 ```bash
 ./scripts/manage-image.sh disable-device-identity
+```
+
+Reparation rapide complete (sans reset d'etat):
+
+```bash
+./scripts/manage-image.sh repair
 ```
 
 ## 4) Pairing recovery

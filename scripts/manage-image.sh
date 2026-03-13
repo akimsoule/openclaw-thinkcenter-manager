@@ -14,11 +14,14 @@ Commands:
   prepare          Create state dirs and fix ownership for container UID
   pull             Pull OPENCLAW_IMAGE
   bootstrap        Write minimal required OpenClaw config (gateway.mode/bind)
+  apply-model      Configure Ollama as primary model
+  apply-telegram   Apply Telegram dm/group policy from .env
   allow-origin     Configure Control UI allowedOrigins (arg IP or env)
   disable-device-identity Disable Control UI device identity checks (dangerous)
   enable-device-identity  Re-enable Control UI device identity checks
   up               Pull + start + bootstrap + restart gateway
   first-start      Full first-run flow: prepare + up + health + dashboard
+  repair           Repair config and restart (bootstrap + model + telegram + health)
   down             Stop stack
   restart          Restart gateway container
   logs             Follow gateway logs
@@ -65,6 +68,10 @@ load_env() {
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
   : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
+  : "${OLLAMA_PRIMARY_MODEL:=qwen3.5:4b-q4_K_M}"
+  : "${TELEGRAM_DM_POLICY:=open}"
+  : "${TELEGRAM_GROUP_POLICY:=open}"
+  : "${TELEGRAM_GROUP_ALLOW_FROM:=}"
 
   export OPENCLAW_CONFIG_DIR
   export OPENCLAW_WORKSPACE_DIR
@@ -74,6 +81,10 @@ load_env() {
   export CONTROL_UI_SERVER_IP
   export CONTROL_UI_ALLOWED_ORIGINS_JSON
   export CONTROL_UI_DISABLE_DEVICE_IDENTITY
+  export OLLAMA_PRIMARY_MODEL
+  export TELEGRAM_DM_POLICY
+  export TELEGRAM_GROUP_POLICY
+  export TELEGRAM_GROUP_ALLOW_FROM
 }
 
 compose() {
@@ -141,12 +152,73 @@ cmd_bootstrap() {
 
   compose run --rm openclaw-cli config set gateway.mode local
   compose run --rm openclaw-cli config set gateway.bind "$OPENCLAW_GATEWAY_BIND"
+  cmd_apply_model
+  cmd_apply_telegram
   cmd_allow_origin --auto || true
 
   disable_identity="$(printf '%s' "${CONTROL_UI_DISABLE_DEVICE_IDENTITY}" | tr '[:upper:]' '[:lower:]')"
   if [[ "$disable_identity" == "true" ]]; then
     cmd_disable_device_identity --auto
   fi
+}
+
+cmd_apply_model() {
+  require_cmd docker
+  load_env
+
+  compose run --rm openclaw-cli \
+    config set agents.defaults.model.primary "ollama/${OLLAMA_PRIMARY_MODEL}"
+  compose run --rm openclaw-cli \
+    config set agents.defaults.model.fallbacks '[]' --strict-json || true
+  echo "Applied primary model: ollama/${OLLAMA_PRIMARY_MODEL}"
+}
+
+csv_to_json_array() {
+  local raw="${1:-}"
+  python3 - "$raw" <<'PY'
+import json
+import sys
+
+raw = sys.argv[1] if len(sys.argv) > 1 else ""
+items = [x.strip() for x in raw.split(",") if x.strip()]
+print(json.dumps(items))
+PY
+}
+
+cmd_apply_telegram() {
+  require_cmd docker
+  load_env
+
+  if [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    warn "TELEGRAM_BOT_TOKEN is empty; skipping Telegram policy apply."
+    return 0
+  fi
+
+  compose run --rm openclaw-cli config set channels.telegram.enabled true
+  compose run --rm openclaw-cli config set channels.telegram.botToken "$TELEGRAM_BOT_TOKEN"
+  compose run --rm openclaw-cli config set channels.telegram.dmPolicy "$TELEGRAM_DM_POLICY"
+  compose run --rm openclaw-cli config set channels.telegram.groupPolicy "$TELEGRAM_GROUP_POLICY"
+
+  if [[ "$TELEGRAM_DM_POLICY" == "open" ]]; then
+    compose run --rm openclaw-cli \
+      config set channels.telegram.allowFrom '["*"]' --strict-json
+  fi
+
+  if [[ "$TELEGRAM_GROUP_POLICY" == "open" ]]; then
+    compose run --rm openclaw-cli \
+      config set channels.telegram.groups '{"*":{"requireMention":false}}' --strict-json || true
+  elif [[ "$TELEGRAM_GROUP_POLICY" == "allowlist" ]]; then
+    local group_allow_json
+    group_allow_json="$(csv_to_json_array "$TELEGRAM_GROUP_ALLOW_FROM")"
+    if [[ "$group_allow_json" != "[]" ]]; then
+      compose run --rm openclaw-cli \
+        config set channels.telegram.groupAllowFrom "$group_allow_json" --strict-json
+    else
+      warn "TELEGRAM_GROUP_POLICY=allowlist but TELEGRAM_GROUP_ALLOW_FROM is empty."
+    fi
+  fi
+
+  echo "Applied Telegram policy: dm=${TELEGRAM_DM_POLICY}, group=${TELEGRAM_GROUP_POLICY}"
 }
 
 normalize_origins_json() {
@@ -266,6 +338,13 @@ cmd_first_start() {
   cmd_dashboard
 }
 
+cmd_repair() {
+  cmd_prepare
+  cmd_bootstrap
+  compose restart openclaw-gateway
+  cmd_health
+}
+
 cmd_down() {
   compose down
 }
@@ -317,11 +396,14 @@ main() {
     prepare) cmd_prepare ;;
     pull) cmd_pull ;;
     bootstrap) cmd_bootstrap ;;
+    apply-model) cmd_apply_model ;;
+    apply-telegram) cmd_apply_telegram ;;
     allow-origin) cmd_allow_origin "${2:-}" ;;
     disable-device-identity) cmd_disable_device_identity ;;
     enable-device-identity) cmd_enable_device_identity ;;
     up) cmd_up ;;
     first-start) cmd_first_start ;;
+    repair) cmd_repair ;;
     down) cmd_down ;;
     restart) cmd_restart ;;
     logs) cmd_logs ;;
