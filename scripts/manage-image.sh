@@ -76,9 +76,10 @@ load_env() {
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
   : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
-  : "${PRIMARY_MODEL:=moonshot/kimi-k2.5}"
+  : "${PRIMARY_MODEL:=nvidia/moonshotai/kimi-k2.5}"
   : "${PRIMARY_MODEL_CONTEXT_WINDOW:=131072}"
   : "${PRIMARY_MODEL_MAX_TOKENS:=16384}"
+  : "${TYPING_INTERVAL_SECONDS:=6}"
   : "${TELEGRAM_DM_POLICY:=open}"
   : "${TELEGRAM_GROUP_POLICY:=open}"
   : "${TELEGRAM_GROUP_ALLOW_FROM:=}"
@@ -169,6 +170,11 @@ cmd_bootstrap() {
   cmd_apply_model
   cmd_apply_telegram
   cmd_allow_origin --auto || true
+
+  if [[ -n "${TYPING_INTERVAL_SECONDS:-}" ]]; then
+    compose run --rm openclaw-cli \
+      config set agent.typingIntervalSeconds "${TYPING_INTERVAL_SECONDS}"
+  fi
 
   disable_identity="$(printf '%s' "${CONTROL_UI_DISABLE_DEVICE_IDENTITY}" | tr '[:upper:]' '[:lower:]')"
   if [[ "$disable_identity" == "true" ]]; then
