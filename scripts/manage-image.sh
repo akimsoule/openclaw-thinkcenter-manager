@@ -68,7 +68,9 @@ load_env() {
   : "${CONTROL_UI_SERVER_IP:=}"
   : "${CONTROL_UI_ALLOWED_ORIGINS_JSON:=}"
   : "${CONTROL_UI_DISABLE_DEVICE_IDENTITY:=false}"
-  : "${PRIMARY_MODEL:=nvidia/nvidia/llama-3.1-nemotron-70b-instruct}"
+  : "${PRIMARY_MODEL:=nvidia/moonshotai/kimi-k2.5}"
+  : "${PRIMARY_MODEL_CONTEXT_WINDOW:=131072}"
+  : "${PRIMARY_MODEL_MAX_TOKENS:=16384}"
   : "${TELEGRAM_DM_POLICY:=open}"
   : "${TELEGRAM_GROUP_POLICY:=open}"
   : "${TELEGRAM_GROUP_ALLOW_FROM:=}"
@@ -82,6 +84,8 @@ load_env() {
   export CONTROL_UI_ALLOWED_ORIGINS_JSON
   export CONTROL_UI_DISABLE_DEVICE_IDENTITY
   export PRIMARY_MODEL
+  export PRIMARY_MODEL_CONTEXT_WINDOW
+  export PRIMARY_MODEL_MAX_TOKENS
   export TELEGRAM_DM_POLICY
   export TELEGRAM_GROUP_POLICY
   export TELEGRAM_GROUP_ALLOW_FROM
@@ -167,7 +171,20 @@ cmd_apply_model() {
   load_env
 
   local primary_model
-  primary_model="${PRIMARY_MODEL:-nvidia/nvidia/llama-3.1-nemotron-70b-instruct}"
+  primary_model="${PRIMARY_MODEL:-nvidia/moonshotai/kimi-k2.5}"
+  local primary_provider
+  local primary_id
+  primary_provider="${primary_model%%/*}"
+  primary_id="${primary_model#*/}"
+
+  if [[ "$primary_provider" == "nvidia" ]]; then
+    compose run --rm openclaw-cli \
+      config set models.providers.nvidia.baseUrl "https://integrate.api.nvidia.com/v1"
+    compose run --rm openclaw-cli \
+      config set models.providers.nvidia.api "openai-completions"
+    compose run --rm openclaw-cli \
+      config set models.providers.nvidia.models "[{\"id\":\"${primary_id}\",\"name\":\"${primary_id}\",\"reasoning\":true,\"input\":[\"text\"],\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0},\"contextWindow\":${PRIMARY_MODEL_CONTEXT_WINDOW},\"maxTokens\":${PRIMARY_MODEL_MAX_TOKENS}}]" --strict-json
+  fi
 
   compose run --rm openclaw-cli \
     config set agents.defaults.model.primary "${primary_model}"
