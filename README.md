@@ -21,7 +21,6 @@ Ne jamais committer `.env`.
 
 - `OPENCLAW_IMAGE=akimsoule/openclaw-thinkcenter:latest` (ou tag date)
 - `TELEGRAM_BOT_TOKEN` (optionnel)
-- `NVIDIA_API_KEY` (optionnel)
 - `MOONSHOT_API_KEY` (optionnel, requis si `PRIMARY_MODEL=moonshot/...`)
 - `CONTROL_UI_SERVER_IP=192.168.0.63` (IP du ThinkCentre pour l'acces distant)
 
